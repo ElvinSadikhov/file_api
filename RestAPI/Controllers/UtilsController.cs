@@ -13,6 +13,16 @@ public class UtilsController(IFileUtilsService fileUtilsService) : BaseControlle
         return Ok(result);
     }
 
+    [HttpPost]
+    public async Task<IActionResult> UpdateFileMetadata(
+        [FromQuery] string uploadId,
+        [FromBody] Dictionary<string, dynamic> metadata
+    )
+    {
+        await fileUtilsService.UpdateFileMetadata(uploadId, metadata);
+        return Ok();
+    }
+
     [HttpDelete]
     public async Task<IActionResult> DeleteFiles([FromQuery] List<string> objectKeys)
     {

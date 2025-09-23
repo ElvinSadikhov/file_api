@@ -18,6 +18,8 @@ public interface IRecordPort
     Task Update(Record recordToBeUpdated);
     
     Task AddPartNumbersWithTagsEntryByUploadId(string uploadId, KeyValuePair<int, string> entry);
+    
+    Task AddAdditionalMetadataByUploadId(string uploadId, Dictionary<string, dynamic> metadata);
 
     Task<List<Record>> GetAll();
     
