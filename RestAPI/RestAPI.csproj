@@ -20,12 +20,4 @@
       <PackageReference Include="Scalar.AspNetCore" Version="2.0.29" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Properties\" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Remove="Properties\launchSettings.json" />
-    </ItemGroup>
-
 </Project>
