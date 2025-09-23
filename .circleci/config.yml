@@ -24,36 +24,12 @@ jobs:
           name: Push clone image to Docker HUB
           command: docker image push "$DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:latest"
 
-  deploy-target-server:
-    docker:
-      - image: cimg/base:2022.06
-    steps:
-      - run:
-          name: Pull image and run on remote server
-          command: |
-            ssh -o StrictHostKeyChecking=no circleci@$TARGET_HOST_IP \<< EOF
-              docker login -u $DOCKER_USER_NAME -p $DOCKER_ACCESS_TOKEN
-              docker stop $CIRCLE_PROJECT_REPONAME || true
-              docker rm $CIRCLE_PROJECT_REPONAME || true
-              docker rmi $DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:latest || true
-              docker pull $DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:latest
-              docker run -p 1010:8080 --name $CIRCLE_PROJECT_REPONAME -d $DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:latest
-
 workflows:
   dev-deploy:
     jobs:
       - create-image-and-push-registry:
           context:
             - General
-          filters:
-            branches:
-              only:
-                - main
-      - deploy-target-server:
-          context:
-            - General
-          requires:
-            - create-image-and-push-registry
           filters:
             branches:
               only:
