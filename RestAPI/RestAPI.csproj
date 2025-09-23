@@ -15,6 +15,7 @@
     <ItemGroup>
       <PackageReference Include="AtomCore" Version="3.3.3" />
       <PackageReference Include="AttributeInjection" Version="1.2.0" />
+      <PackageReference Include="HiNetCloud.Microsoft.IO.RecyclableMemoryStream" Version="23.10.7.8" />
       <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.2" />
       <PackageReference Include="Scalar.AspNetCore" Version="2.0.29" />
     </ItemGroup>

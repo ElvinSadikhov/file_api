@@ -1,0 +1,60 @@
+version: 2.1
+
+jobs:
+  create-image-and-push-registry:
+    docker:
+      - image: cimg/base:2022.06
+    steps:
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - checkout
+      - run:
+          name: Login docker hub
+          command: docker login -u $DOCKER_USER_NAME -p $DOCKER_ACCESS_TOKEN
+      - run:
+          name: Create image
+          command: docker build -t "$DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_WORKFLOW_JOB_ID" .
+      - run:
+          name: Clone image with latest tag
+          command: docker tag "$DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_WORKFLOW_JOB_ID" "$DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:latest"
+      - run:
+          name: Push to Docker HUB
+          command: docker image push "$DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:$CIRCLE_WORKFLOW_JOB_ID"
+      - run:
+          name: Push clone image to Docker HUB
+          command: docker image push "$DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:latest"
+
+  deploy-target-server:
+    docker:
+      - image: cimg/base:2022.06
+    steps:
+      - run:
+          name: Pull image and run on remote server
+          command: |
+            ssh -o StrictHostKeyChecking=no circleci@$TARGET_HOST_IP \<< EOF
+              docker login -u $DOCKER_USER_NAME -p $DOCKER_ACCESS_TOKEN
+              docker stop $CIRCLE_PROJECT_REPONAME || true
+              docker rm $CIRCLE_PROJECT_REPONAME || true
+              docker rmi $DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:latest || true
+              docker pull $DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:latest
+              docker run -p 1010:8080 --name $CIRCLE_PROJECT_REPONAME -d $DOCKER_USER_NAME/$CIRCLE_PROJECT_REPONAME:latest
+
+workflows:
+  dev-deploy:
+    jobs:
+      - create-image-and-push-registry:
+          context:
+            - General
+          filters:
+            branches:
+              only:
+                - master
+      - deploy-target-server:
+          context:
+            - General
+          requires:
+            - create-image-and-push-registry
+          filters:
+            branches:
+              only:
+                - master

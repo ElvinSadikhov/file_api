@@ -3,25 +3,27 @@ using Domain;
 
 namespace Application.Ports;
 
-[Scoped]
+[Singelton]
 public interface IRecordPort
 {
-    Task<Record> Create(
-        string uploadId,
+    Task<Record> Create(string uploadId,
         string remoteUploadId,
-        int chunkCount,
-        double chunkSizeInMb,
+        string objectKey,
+        int partCount,
+        long partSizeInBytes,
         Dictionary<string, dynamic> metadata,
-        DateTime expirationDate,
-        List<int> leftChunks
+        TimeSpan? expiration
     );
-    
+
     Task Update(Record recordToBeUpdated);
     
-    Task<Record> GetByUploadId(string uploadId);
+    Task AddPartNumbersWithTagsEntryByUploadId(string uploadId, KeyValuePair<int, string> entry);
+
+    Task<List<Record>> GetAll();
+    
+    Task<Record?> GetByUploadId(string uploadId);
 
     Task<List<int>> GetLeftChunks(string uploadId);
-    
-    
-    Task Delete(string uploadId);
+
+    Task DeleteByUploadId(string uploadId);
 }

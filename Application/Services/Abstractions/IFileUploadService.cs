@@ -8,15 +8,17 @@ public interface IFileUploadService
     /// <summary>
     /// Method for starting a new file upload session.
     /// </summary>
-    /// <param name="chunkCount">Number of total chunks that will be sent.</param>
-    /// <param name="chunkSizeInMb">Size of each chunk in megabytes.</param>
+    /// <param name="objectKey">Directory and full file name combined as a path.</param>
+    /// <param name="partCount">Number of total chunks that will be sent.</param>
+    /// <param name="partSizeInBytes">Size of each chunk in megabytes.</param>
     /// <param name="metadata">Additional data for business logic of client.</param>
     /// <returns>
     /// A unique upload ID (string) that can be used to reference this upload session.
     /// </returns>
-    Task<string> Init(
-        int chunkCount,
-        double chunkSizeInMb,
+    Task<string> InitMultipartUpload(
+        string objectKey,
+        int partCount,
+        long partSizeInBytes,
         Dictionary<string, dynamic> metadata
     );
 
@@ -24,12 +26,20 @@ public interface IFileUploadService
     /// Method for uploading a single chunk of a file.
     /// </summary>
     /// <param name="uploadId">ID to upload chunks for.</param>
-    /// <param name="chunkIndex">The number of the chunk that being uploaded.</param>
-    /// <param name="chunkData">Chunk to be uploaded.</param>
+    /// <param name="partNumber">The number of the chunk that being uploaded.</param>
+    /// <param name="inputStream">Stream of data to be uploaded.</param>
     /// <returns>Indexes of left chunks.</returns>
-    Task<List<int>> UploadChunk(string uploadId, int chunkIndex, byte[] chunkData);
+    Task<List<int>> UploadPart(string uploadId, int partNumber, Stream inputStream);
 
     Task<List<int>> GetLeftChunks(string uploadId);
 
-    Task CompleteUpload(string uploadId, string clintChecksum);
+    /// <summary>
+    /// Completes upload by merging and preparing the whole file.
+    /// </summary>
+    /// <returns>Metadata set at init step.</returns>
+    Task<Dictionary<string, dynamic>> CompleteUpload(string uploadId);
+    
+    Task AbortUpload(string uploadId);
+
+    Task UploadFullFile(string objectKey, Stream inputStream);
 }

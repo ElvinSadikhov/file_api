@@ -1,18 +1,83 @@
 using Application.Dtos;
 using Application.Services.Abstractions;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.IO;
 using RestAPI.Controllers.Commons;
 
 namespace RestAPI.Controllers;
 
-public class UploadController(IFileUploadService fileUploadService) : BaseController
+public class UploadController : BaseController
 {
-    [HttpPost]
-    public async Task<IActionResult> Init([FromBody] InitUploadRequestDto dto)
+    private readonly RecyclableMemoryStreamManager _streamManager;
+    private readonly IFileUploadService _fileUploadService;
+    private readonly ILogger<UploadController> _logger;
+
+    public UploadController(IFileUploadService fileUploadService, ILogger<UploadController> logger)
     {
-        var result = await fileUploadService.Init(
-            dto.ChunkCount,
-            dto.ChunkSizeInMb,
+        _fileUploadService = fileUploadService;
+        _logger = logger;
+        bool isBlockSizeSet = int.TryParse(Environment.GetEnvironmentVariable("RECYCLABLE_STREAM_BLOCK_SIZE") ?? "",
+            out int blockSize);
+        bool isLargeBufferMultipleSet =
+            int.TryParse(Environment.GetEnvironmentVariable("RECYCLABLE_STREAM_BLOCK_LARGE_BUFFER_MULTIPLE") ?? "",
+                out int largeBufferMultiple);
+
+        _streamManager = new(
+            blockSize: isBlockSizeSet ? blockSize : 80 * 1024, // default 80 KB
+            largeBufferMultiple: isLargeBufferMultipleSet ? largeBufferMultiple : 1024 * 1024, // default 1 MB
+            maximumBufferSize: int.Parse(Environment.GetEnvironmentVariable("MAX_ALLOWED_PART_SIZE_IN_BYTES")!)
+        );
+        _streamManager.GenerateCallStacks = true;
+        _streamManager.StreamDisposed += (sender, args) =>
+        {
+            _logger.LogWarning("RMS stream disposed. Tag={Tag}", args.Tag);
+        };
+
+        _streamManager.StreamFinalized += (sender, args) =>
+        {
+            _logger.LogError("RMS stream finalized without Dispose(). Tag={Tag}", args.Tag);
+        };
+
+        _streamManager.StreamDoubleDisposed += (sender, args) =>
+        {
+            _logger.LogWarning("RMS stream disposed twice. Tag={Tag}", args.Tag);
+        };
+
+        _streamManager.LargeBufferCreated += (sender, args) =>
+        {
+            _logger.LogInformation("Large buffer created. Required={RequiredSize}, Pooled={Pooled}, Tag={Tag}",
+                args.RequiredSize, args.Pooled, args.Tag);
+        };
+
+        // _streamManager.BlockCreated += (sender, args) =>
+        // {
+        //     _logger.LogDebug("Block created. SmallPoolInUse={SmallPoolInUse}", args.SmallPoolInUse);
+        // };
+    }
+
+    [HttpPost]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(50 * 1024 * 1024)] // 50 MB limit for full file upload // todo: include in documentaion
+    public async Task<IActionResult> UploadFullFile(
+        [FromQuery] string objectKey,
+        [FromForm] IFormFile file
+    )
+    {
+        await using var stream = file.OpenReadStream();
+
+        await _fileUploadService.UploadFullFile(objectKey, stream);
+
+        return Ok();
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> InitMultipartUpload([FromBody] InitUploadRequestDto dto)
+    {
+        var result = await _fileUploadService.InitMultipartUpload(
+            dto.ObjectKey,
+            dto.PartCount,
+            dto.PartSizeInBytes,
             dto.Metadata
         );
         return Ok(result);
@@ -20,36 +85,66 @@ public class UploadController(IFileUploadService fileUploadService) : BaseContro
 
     [HttpPost]
     [Consumes("application/octet-stream")]
-    public async Task<IActionResult> UploadChunk(
+    public async Task<IActionResult> UploadPart(
         [FromQuery] string uploadId,
-        [FromQuery] int chunkIndex
+        [FromQuery] int partNumber
     )
     {
-        using var ms = new MemoryStream();
-        await Request.Body.CopyToAsync(ms);
-        var chunkData = ms.ToArray();
+        // Optional: upfront Content-Length validation if client sends it
+        if (Request.ContentLength.HasValue)
+        {
+            var maxAllowed = _streamManager.MaximumStreamCapacity;
+            if (Request.ContentLength.Value > maxAllowed)
+            {
+                return StatusCode(StatusCodes.Status413PayloadTooLarge,
+                    $"Payload exceeds the maximum allowed size of {maxAllowed} bytes.");
+            }
+        }
 
-        await fileUploadService.UploadChunk(uploadId, chunkIndex, chunkData);
+        // Use recyclable memory stream instead of new MemoryStream()
+        using (var ms = _streamManager.GetStream($"Upload-{uploadId}-Part-{partNumber}"))
+        {
+            try
+            {
+                HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>()!.MaxRequestBodySize =
+                    int.Parse(Environment.GetEnvironmentVariable("MAX_ALLOWED_PART_SIZE_IN_BYTES")!);
+                await Request.Body.CopyToAsync(ms);
+            }
+            catch (InvalidOperationException)
+            {
+                // Thrown if the stream grows beyond maximumBufferSize
+                return StatusCode(StatusCodes.Status413PayloadTooLarge,
+                    "Payload exceeded the maximum allowed size.");
+            }
 
-        return Ok();
+            ms.Position = 0; // reset before handing off
+
+            await _fileUploadService.UploadPart(uploadId, partNumber, ms);
+            return Ok();
+        }
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetLeftChunks([FromQuery] string uploadId)
+    public async Task<IActionResult> GetLeftParts([FromQuery] string uploadId)
     {
-        var missingChunks = await fileUploadService.GetLeftChunks(uploadId);
-
+        var missingChunks = await _fileUploadService.GetLeftChunks(uploadId);
         return Ok(missingChunks);
     }
 
     [HttpPost]
-    public async Task<IActionResult> CompleteUpload(
-        [FromQuery] string uploadId,
-        [FromQuery] string clintChecksum
-    )
+    public async Task<IActionResult> CompleteUpload([FromQuery] string uploadId)
     {
-        await fileUploadService.CompleteUpload(uploadId, clintChecksum);
+        var result = await _fileUploadService.CompleteUpload(uploadId);
+        return Ok(new Dictionary<string, dynamic>()
+        {
+            { "metadata", result }
+        });
+    }
 
+    [HttpDelete]
+    public async Task<IActionResult> AbortUpload([FromQuery] string uploadId)
+    {
+        await _fileUploadService.AbortUpload(uploadId);
         return Ok();
     }
 }
