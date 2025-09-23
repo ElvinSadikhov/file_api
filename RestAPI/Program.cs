@@ -11,7 +11,7 @@ using Quartz;
 using RestAPI.Middlewares;
 using Scalar.AspNetCore;
 
-// todo: fix atomicity problems EVERYWHERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// todo: fix atomicity problems EVERYWHERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 EnsureEnvVarsAreSet();
 
 var builder = WebApplication.CreateBuilder(args);
