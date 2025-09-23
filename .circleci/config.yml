@@ -48,7 +48,7 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - main
       - deploy-target-server:
           context:
             - General
@@ -57,4 +57,4 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - main
