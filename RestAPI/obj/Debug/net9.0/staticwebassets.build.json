@@ -1,13 +1,13 @@
 {
   "Version": 1,
-  "Hash": "McoiKDX8ViE1B/TL/4BpLxdcXbi0Ou5K0twknY2YUi4=",
+  "Hash": "SAlTiL+H6OHrzyWS+NLASXVCCKZ02Kf3rz+o9VIF0sI=",
   "Source": "RestAPI",
   "BasePath": "_content/RestAPI",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [
     {
-      "Identity": "/Users/elvinsadikhov/DevelopmentProjects/soul-wallet/SoulWalletAPI/Application/Application.csproj",
+      "Identity": "/Users/elvinsadikhov/ASP.NETDevelopment/FileAPI/Application/Application.csproj",
       "Version": 2,
       "Source": "Application",
       "GetPublishAssetsTargets": "ComputeReferencedStaticWebAssetsPublishManifest;GetCurrentProjectPublishStaticWebAssetItems",
@@ -18,7 +18,7 @@
       "AdditionalBuildPropertiesToRemove": "WebPublishProfileFile;TargetFramework;RuntimeIdentifier;SelfContained"
     },
     {
-      "Identity": "/Users/elvinsadikhov/DevelopmentProjects/soul-wallet/SoulWalletAPI/Core/Core.csproj",
+      "Identity": "/Users/elvinsadikhov/ASP.NETDevelopment/FileAPI/Core/Core.csproj",
       "Version": 2,
       "Source": "Core",
       "GetPublishAssetsTargets": "ComputeReferencedStaticWebAssetsPublishManifest;GetCurrentProjectPublishStaticWebAssetItems",
@@ -29,7 +29,7 @@
       "AdditionalBuildPropertiesToRemove": "WebPublishProfileFile;TargetFramework;RuntimeIdentifier;SelfContained"
     },
     {
-      "Identity": "/Users/elvinsadikhov/DevelopmentProjects/soul-wallet/SoulWalletAPI/Domain/Domain.csproj",
+      "Identity": "/Users/elvinsadikhov/ASP.NETDevelopment/FileAPI/Domain/Domain.csproj",
       "Version": 2,
       "Source": "Domain",
       "GetPublishAssetsTargets": "ComputeReferencedStaticWebAssetsPublishManifest;GetCurrentProjectPublishStaticWebAssetItems",
@@ -40,18 +40,7 @@
       "AdditionalBuildPropertiesToRemove": "WebPublishProfileFile;TargetFramework;RuntimeIdentifier;SelfContained"
     },
     {
-      "Identity": "/Users/elvinsadikhov/DevelopmentProjects/soul-wallet/SoulWalletAPI/Infrastructure/Infrastructure.csproj",
-      "Version": 2,
-      "Source": "Infrastructure",
-      "GetPublishAssetsTargets": "ComputeReferencedStaticWebAssetsPublishManifest;GetCurrentProjectPublishStaticWebAssetItems",
-      "AdditionalPublishProperties": "Configuration=Debug;Platform=AnyCPU",
-      "AdditionalPublishPropertiesToRemove": "WebPublishProfileFile;TargetFramework;RuntimeIdentifier;SelfContained",
-      "GetBuildAssetsTargets": "GetCurrentProjectBuildStaticWebAssetItems",
-      "AdditionalBuildProperties": "Configuration=Debug;Platform=AnyCPU",
-      "AdditionalBuildPropertiesToRemove": "WebPublishProfileFile;TargetFramework;RuntimeIdentifier;SelfContained"
-    },
-    {
-      "Identity": "/Users/elvinsadikhov/DevelopmentProjects/soul-wallet/SoulWalletAPI/Persistence/Persistence.csproj",
+      "Identity": "/Users/elvinsadikhov/ASP.NETDevelopment/FileAPI/Persistence/Persistence.csproj",
       "Version": 2,
       "Source": "Persistence",
       "GetPublishAssetsTargets": "ComputeReferencedStaticWebAssetsPublishManifest;GetCurrentProjectPublishStaticWebAssetItems",
