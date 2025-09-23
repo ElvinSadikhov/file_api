@@ -71,6 +71,32 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
         }
     }
 
+    public async Task AddAdditionalMetadataByUploadId(string uploadId, Dictionary<string, dynamic> metadata)
+    {
+        using (var redLock = await CreateLockAsync(
+                   $"update_metadata:{GenerateKey(uploadId)}:lock",
+                   expiry: TimeSpan.FromSeconds(10),
+                   wait: TimeSpan.FromSeconds(5),
+                   retry: TimeSpan.FromMilliseconds(50)
+               ))
+        {
+            if (!redLock.IsAcquired)
+                throw new Exception(
+                    "Could not acquire the distributed lock for AddAdditionalMetadataByUploadId operation.");
+
+            var record = await GetByUploadId(uploadId);
+            if (record is null)
+                throw new Exception($"Record with uploadId {uploadId} not found.");
+
+            foreach (var kvp in metadata)
+            {
+                record.Metadata[kvp.Key] = kvp.Value;
+            }
+
+            await Update(record);
+        }
+    }
+
     public async Task<List<Record>> GetAll()
     {
         var records = new List<Record>();
