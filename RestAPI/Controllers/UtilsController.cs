@@ -7,14 +7,17 @@ namespace RestAPI.Controllers;
 public class UtilsController(IFileUtilsService fileUtilsService) : BaseController
 {
     [HttpGet]
-    public async Task<IActionResult> GetFileSizeInBytes([FromQuery] string objectKey)
+    public async Task<IActionResult> GetFileSizeInBytes(
+        [FromQuery] string objectKey,
+        [FromQuery] string? ownerId
+    )
     {
-        var result = await fileUtilsService.GetFileSizeInBytes(objectKey);
+        var result = await fileUtilsService.GetFileSizeInBytes(objectKey, ownerId);
         return Ok(result);
     }
 
     [HttpPost]
-    public async Task<IActionResult> UpdateFileMetadata(
+    public async Task<IActionResult> UpdateRecordMetadata(
         [FromQuery] string uploadId,
         [FromBody] Dictionary<string, dynamic> metadata
     )
@@ -24,9 +27,9 @@ public class UtilsController(IFileUtilsService fileUtilsService) : BaseControlle
     }
 
     [HttpDelete]
-    public async Task<IActionResult> DeleteFiles([FromQuery] List<string> objectKeys)
+    public async Task<IActionResult> DeleteFiles([FromQuery] List<string> objectKeys, [FromQuery] string? ownerId)
     {
-        var result = await fileUtilsService.DeleteFiles(objectKeys);
+        var result = await fileUtilsService.DeleteFiles(objectKeys, ownerId);
         return Ok(result);
     }
 }

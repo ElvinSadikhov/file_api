@@ -12,20 +12,19 @@ public interface IRecordPort
         int partCount,
         long partSizeInBytes,
         Dictionary<string, dynamic> metadata,
-        TimeSpan? expiration
+        TimeSpan? expiration,
+        string? ownerId = null
     );
 
     Task Update(Record recordToBeUpdated);
     
     Task AddPartNumbersWithTagsEntryByUploadId(string uploadId, KeyValuePair<int, string> entry);
     
-    Task AddAdditionalMetadataByUploadId(string uploadId, Dictionary<string, dynamic> metadata);
+    Task AddAdditionalMetadataByUploadId(string uploadId, Dictionary<string, dynamic> metadata, string? ownerId = null);
 
     Task<List<Record>> GetAll();
     
     Task<Record?> GetByUploadId(string uploadId);
-
-    Task<List<int>> GetLeftChunks(string uploadId);
 
     Task DeleteByUploadId(string uploadId);
 }

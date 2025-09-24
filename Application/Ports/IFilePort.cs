@@ -9,9 +9,11 @@ public interface IFilePort
     /// Initializes multipart upload procedure.
     /// </summary>
     /// <param name="objectKey">Directory and file name combined as path.</param>
+    /// <param name="ownerId"></param>
     /// <returns>Upload ID of new object.</returns>
     Task<string> Init(
-        string objectKey
+        string objectKey,
+        string? ownerId = null
     );
 
     /// <summary></summary>
@@ -44,20 +46,24 @@ public interface IFilePort
         string objectKey,
         int partNumber,
         long partSizeInBytes,
-        long totalSizeInBytes
+        long totalSizeInBytes,
+        string? ownerId = null
     );
 
     Task<long> GetFileSizeInBytes(
-        string objectKey
+        string objectKey,
+        string? ownerId = null
     );
 
     Task<string> GenerateDownloadPreSignedUrl(
         string objectKey,
-        DateTime expiresOn
+        DateTime expiresOn,
+        string? ownerId = null
     );
 
     Task<List<string>> DeleteMultiple(
-        List<string> objectKeys
+        List<string> objectKeys,
+        string? ownerId = null
     );
     
     /// <summary>
@@ -65,6 +71,7 @@ public interface IFilePort
     /// </summary>
     Task UploadFullFile(
         string objectKey,
-        Stream inputStream
+        Stream inputStream,
+        string? ownerId = null
     );
 }

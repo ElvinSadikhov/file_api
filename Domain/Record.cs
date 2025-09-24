@@ -4,6 +4,8 @@ public class Record
 {
     public string UploadId { get; set; }
     public string RemoteUploadId { get; set; }
+    
+    public string? ownerId { get; set; }
     public int PartCount { get; set; }
     public long PartSizeInBytes { get; set; }
     public Dictionary<string, dynamic> Metadata { get; set; }
@@ -35,5 +37,13 @@ public class Record
     public bool HasExpired()
     {
         return ExpirationDateTimeUtc is not null && DateTime.UtcNow >= ExpirationDateTimeUtc;
+    }
+
+    public bool IsOwnedBy(string? ownerId)
+    {
+        if (this.ownerId is null) return true;
+        if (ownerId is null) return false;
+        
+        return string.Equals(this.ownerId, ownerId);
     }
 }

@@ -52,13 +52,15 @@ public class S3FileAdapter : IFilePort
         return _client;
     }
 
-    public async Task<string> Init(string objectKey)
+    public async Task<string> Init(string objectKey, string? ownerId = null)
     {
         var request = new InitiateMultipartUploadRequest()
         {
             BucketName = _bucketName,
             Key = objectKey,
         };
+        request.Metadata.Add("ownerId", ownerId); 
+
         var response = await GetClient().InitiateMultipartUploadAsync(request);
         return response.UploadId;
     }
@@ -122,8 +124,10 @@ public class S3FileAdapter : IFilePort
     }
 
     public async Task<(Stream, long)> DownloadPart(string objectKey, int partNumber, long partSizeInBytes,
-        long totalSizeInBytes)
+        long totalSizeInBytes, string? ownerId = null)
     {
+        await InsureOwnership(objectKey, ownerId);
+        
         long start = (partNumber - 1) * partSizeInBytes;
         long end = Math.Min(start + partSizeInBytes, totalSizeInBytes) - 1;
 
@@ -147,34 +151,43 @@ public class S3FileAdapter : IFilePort
         return (response.ResponseStream, end - start + 1);
     }
 
-    public async Task<long> GetFileSizeInBytes(string objectKey)
+    public async Task<long> GetFileSizeInBytes(string objectKey, string? ownerId = null)
     {
+        await InsureOwnership(objectKey, ownerId);
+        
         var request = new GetObjectAttributesRequest()
         {
             BucketName = _bucketName,
             Key = objectKey,
-            ObjectAttributes = new List<ObjectAttributes> { ObjectAttributes.ObjectSize }
+            ObjectAttributes = [ObjectAttributes.ObjectSize]
         };
         var response = await GetClient().GetObjectAttributesAsync(request);
 
         return (long)response.ObjectSize!;
     }
 
-    public async Task<string> GenerateDownloadPreSignedUrl(string objectKey, DateTime expiresOn)
+    public async Task<string> GenerateDownloadPreSignedUrl(string objectKey, DateTime expiresOn, string? ownerId = null)
     {
+        await InsureOwnership(objectKey, ownerId);
+        
         var request = new GetPreSignedUrlRequest()
         {
             BucketName = _bucketName,
             Key = objectKey,
             Expires = expiresOn,
-            Verb = HttpVerb.GET
+            Verb = HttpVerb.GET,
         };
 
         return await GetClient().GetPreSignedURLAsync(request);
     }
 
-    public async Task<List<string>> DeleteMultiple(List<string> objectKeys)
+    public async Task<List<string>> DeleteMultiple(List<string> objectKeys, string? ownerId = null)
     {
+        foreach (var objectKey in objectKeys)
+        {
+            await InsureOwnership(objectKey, ownerId);
+        }
+        
         var request = new DeleteObjectsRequest
         {
             BucketName = _bucketName!,
@@ -186,20 +199,37 @@ public class S3FileAdapter : IFilePort
         return response.DeletedObjects.Select(o => o.Key).ToList();
     }
 
-    public async Task UploadFullFile(string objectKey, Stream inputStream)
+    public async Task UploadFullFile(string objectKey, Stream inputStream, string? ownerId = null)
     {
         var request = new PutObjectRequest()
         {
             BucketName = _bucketName,
             Key = objectKey,
             InputStream = inputStream,
-            // StreamTransferProgress = 
         };
-        var response = await GetClient().PutObjectAsync(request);
+        request.Metadata.Add("ownerId", ownerId); 
         
+        var response = await GetClient().PutObjectAsync(request);
+
         bool isSuccessful = (int)response.HttpStatusCode >= 200 && (int)response.HttpStatusCode < 300;
         if (!isSuccessful)
             throw new InfrastructureException(
                 $"Error aborting upload object: {objectKey} -> {response.HttpStatusCode}, {response.ResponseMetadata}");
+    }
+
+    private async Task InsureOwnership(string objectKey, string? ownerId)
+    {
+        var request = new GetObjectMetadataRequest()
+        {
+            BucketName = _bucketName,
+            Key = objectKey,
+        };
+        var response = await GetClient().GetObjectMetadataAsync(request);
+        string? ownerIdFromMetadata = response.Metadata.Keys.FirstOrDefault(k => k.Equals("ownerId", StringComparison.OrdinalIgnoreCase));
+
+        if (ownerIdFromMetadata is null) return;
+        
+        if (ownerId is null || !string.Equals(ownerIdFromMetadata, ownerId)) 
+            throw new BusinessException("Unauthorized: You are not the owner of this file.");
     }
 }

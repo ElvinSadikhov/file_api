@@ -7,21 +7,22 @@ namespace RestAPI.Controllers;
 public class DownloadController(IFileDownloadService fileDownloadService) : BaseController
 {
     [HttpGet]
-    public async Task<IActionResult> GetDownloadUrl([FromQuery] string objectKey)
+    public async Task<IActionResult> GetDownloadUrl([FromQuery] string objectKey, [FromQuery] string? ownerId)
     {
-        var result = await fileDownloadService.GenerateDownloadUrl(objectKey);
+        var result = await fileDownloadService.GenerateDownloadUrl(objectKey, ownerId);
         return Ok(result);
     }
 
     [HttpGet]
     public async Task DownloadPart(
         [FromQuery] string objectKey,
+        [FromQuery] string? ownerId,
         [FromQuery] int partNumber,
         [FromQuery] long partSizeInBytes,
-        [FromQuery] long totalSizeInBytes
+        [FromQuery] long totalSizeInBytes 
     )
     {
-        var result = await fileDownloadService.DownloadPart(objectKey, partNumber, partSizeInBytes, totalSizeInBytes);
+        var result = await fileDownloadService.DownloadPart(objectKey, partNumber, partSizeInBytes, totalSizeInBytes, ownerId);
         Response.ContentType = "application/octet-stream";
         Response.ContentLength = result.Item2;
 
