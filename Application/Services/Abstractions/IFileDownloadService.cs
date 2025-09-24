@@ -5,7 +5,7 @@ namespace Application.Services.Abstractions;
 [Scoped]
 public interface IFileDownloadService
 {
-    Task<string> GenerateDownloadUrl(string objectKey);
+    Task<string> GenerateDownloadUrl(string objectKey, string? ownerId = null);
 
     /// <summary>
     /// Downloads a part of file from storage.
@@ -15,6 +15,7 @@ public interface IFileDownloadService
     /// <param name="partNumber">1-based number of a part.</param>
     /// <param name="partSizeInBytes">Size of individual parts in file in bytes.</param>
     /// <param name="totalSizeInBytes">Total size of file in bytes.</param>
+    /// <param name="ownerId">ID of owner, to check ownership later.</param>
     /// <returns>
     /// Stream of the part and size of the part in bytes.
     /// </returns>
@@ -22,6 +23,7 @@ public interface IFileDownloadService
         string objectKey,
         int partNumber,
         long partSizeInBytes,
-        long totalSizeInBytes
+        long totalSizeInBytes, 
+        string? ownerId = null
     );
 }

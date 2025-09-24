@@ -61,24 +61,29 @@ public class UploadController : BaseController
     [RequestSizeLimit(50 * 1024 * 1024)] // 50 MB limit for full file upload // todo: include in documentaion
     public async Task<IActionResult> UploadFullFile(
         [FromQuery] string objectKey,
+        [FromQuery] string? ownerId,
         [FromForm] IFormFile file
     )
     {
         await using var stream = file.OpenReadStream();
 
-        await _fileUploadService.UploadFullFile(objectKey, stream);
+        await _fileUploadService.UploadFullFile(objectKey, stream, ownerId);
 
         return Ok();
     }
 
     [HttpPost]
-    public async Task<IActionResult> InitMultipartUpload([FromBody] InitUploadRequestDto dto)
+    public async Task<IActionResult> InitMultipartUpload(
+        [FromQuery] string? ownerId,
+        [FromBody] InitUploadRequestDto dto
+    )
     {
         var result = await _fileUploadService.InitMultipartUpload(
             dto.ObjectKey,
             dto.PartCount,
             dto.PartSizeInBytes,
-            dto.Metadata
+            dto.Metadata,
+            ownerId
         );
         return Ok(result);
     }
@@ -87,6 +92,7 @@ public class UploadController : BaseController
     [Consumes("application/octet-stream")]
     public async Task<IActionResult> UploadPart(
         [FromQuery] string uploadId,
+        [FromQuery] string? ownerId,
         [FromQuery] int partNumber
     )
     {
@@ -119,22 +125,28 @@ public class UploadController : BaseController
 
             ms.Position = 0; // reset before handing off
 
-            await _fileUploadService.UploadPart(uploadId, partNumber, ms);
+            await _fileUploadService.UploadPart(uploadId, partNumber, ms, ownerId);
             return Ok();
         }
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetLeftParts([FromQuery] string uploadId)
+    public async Task<IActionResult> GetLeftParts(
+        [FromQuery] string uploadId,
+        [FromQuery] string? ownerId
+    )
     {
-        var missingChunks = await _fileUploadService.GetLeftChunks(uploadId);
+        var missingChunks = await _fileUploadService.GetLeftParts(uploadId, ownerId);
         return Ok(missingChunks);
     }
 
     [HttpPost]
-    public async Task<IActionResult> CompleteUpload([FromQuery] string uploadId)
+    public async Task<IActionResult> CompleteUpload(
+        [FromQuery] string uploadId,
+        [FromQuery] string? ownerId
+    )
     {
-        var result = await _fileUploadService.CompleteUpload(uploadId);
+        var result = await _fileUploadService.CompleteUpload(uploadId, ownerId);
         return Ok(new Dictionary<string, dynamic>()
         {
             { "metadata", result }
@@ -142,9 +154,12 @@ public class UploadController : BaseController
     }
 
     [HttpDelete]
-    public async Task<IActionResult> AbortUpload([FromQuery] string uploadId)
+    public async Task<IActionResult> AbortUpload(
+        [FromQuery] string uploadId,
+        [FromQuery] string? ownerId
+    )
     {
-        await _fileUploadService.AbortUpload(uploadId);
+        await _fileUploadService.AbortUpload(uploadId, ownerId);
         return Ok();
     }
 }

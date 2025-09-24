@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Application.Ports;
+using AtomCore.ExceptionHandling.Exceptions;
 using Domain;
 using RedLockNet;
 using RedLockNet.SERedis;
@@ -22,12 +23,16 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
 
     public async Task<Record> Create(string uploadId, string remoteUploadId, string objectKey, int partCount,
         long partSizeInBytes,
-        Dictionary<string, dynamic> metadata, TimeSpan? expiration)
+        Dictionary<string, dynamic> metadata,
+        TimeSpan? expiration,
+        string? ownerId = null
+    )
     {
         var record = new Record
         {
             UploadId = uploadId,
             RemoteUploadId = remoteUploadId,
+            ownerId = ownerId,
             ObjectKey = objectKey,
             PartCount = partCount,
             PartSizeInBytes = partSizeInBytes,
@@ -71,7 +76,7 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
         }
     }
 
-    public async Task AddAdditionalMetadataByUploadId(string uploadId, Dictionary<string, dynamic> metadata)
+    public async Task AddAdditionalMetadataByUploadId(string uploadId, Dictionary<string, dynamic> metadata, string? ownerId = null)
     {
         using (var redLock = await CreateLockAsync(
                    $"update_metadata:{GenerateKey(uploadId)}:lock",
@@ -87,6 +92,8 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
             var record = await GetByUploadId(uploadId);
             if (record is null)
                 throw new Exception($"Record with uploadId {uploadId} not found.");
+            if (!record.IsOwnedBy(ownerId))
+                throw new BusinessException("You are not the owner of this record.");
 
             foreach (var kvp in metadata)
             {
@@ -140,13 +147,6 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
         if (record is null || record.HasExpired()) return null;
 
         return record;
-    }
-
-    public async Task<List<int>> GetLeftChunks(string uploadId)
-    {
-        var record = (await GetByUploadId(uploadId))!;
-
-        return record.GetLeftParts();
     }
 
     public async Task DeleteByUploadId(string uploadId)
