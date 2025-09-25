@@ -98,7 +98,11 @@ public class FileUploadService(IRecordPort recordPort, IFilePort filePort) : IFi
 
         await recordPort.DeleteByUploadId(uploadId);
 
-        return record.Metadata;
+        return new Dictionary<string, dynamic>()
+        {
+            { "objectKey", record.ObjectKey },
+            { "metadata", record.Metadata },
+        };
     }
 
     public async Task AbortUpload(string uploadId, string? ownerId = null)

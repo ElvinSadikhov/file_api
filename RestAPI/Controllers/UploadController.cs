@@ -147,10 +147,7 @@ public class UploadController : BaseController
     )
     {
         var result = await _fileUploadService.CompleteUpload(uploadId, ownerId);
-        return Ok(new Dictionary<string, dynamic>()
-        {
-            { "metadata", result }
-        });
+        return Ok(result);
     }
 
     [HttpDelete]

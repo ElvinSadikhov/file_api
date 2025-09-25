@@ -39,7 +39,7 @@ public interface IFileUploadService
     /// <summary>
     /// Completes upload by merging and preparing the whole file.
     /// </summary>
-    /// <returns>Metadata set at init step.</returns>
+    /// <returns>JSON with objectKey and metadata.</returns>
     Task<Dictionary<string, dynamic>> CompleteUpload(string uploadId, string? ownerId = null);
     
     Task AbortUpload(string uploadId, string? ownerId = null);
