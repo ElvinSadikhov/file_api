@@ -6272,6 +6272,7 @@
       "HiNetCloud.Microsoft.IO.RecyclableMemoryStream >= 23.10.7.8",
       "Microsoft.AspNetCore.OpenApi >= 9.0.2",
       "Persistence >= 1.0.0",
+      "Quartz.Extensions.Hosting >= 3.15.0",
       "Scalar.AspNetCore >= 2.0.29"
     ]
   },
@@ -6343,6 +6344,10 @@
           "Microsoft.AspNetCore.OpenApi": {
             "target": "Package",
             "version": "[9.0.2, )"
+          },
+          "Quartz.Extensions.Hosting": {
+            "target": "Package",
+            "version": "[3.15.0, )"
           },
           "Scalar.AspNetCore": {
             "target": "Package",

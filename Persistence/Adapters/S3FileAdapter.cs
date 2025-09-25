@@ -225,11 +225,12 @@ public class S3FileAdapter : IFilePort
             Key = objectKey,
         };
         var response = await GetClient().GetObjectMetadataAsync(request);
-        string? ownerIdFromMetadata = response.Metadata.Keys.FirstOrDefault(k => k.Equals("ownerId", StringComparison.OrdinalIgnoreCase));
+        string? ownerIdKeyFromMetadata = response.Metadata.Keys.FirstOrDefault(k => k.Equals("ownerId", StringComparison.OrdinalIgnoreCase))
+            ?? response.Metadata.Keys.FirstOrDefault(k => k.EndsWith("ownerId", StringComparison.OrdinalIgnoreCase));
 
-        if (ownerIdFromMetadata is null) return;
+        if (ownerIdKeyFromMetadata is null) return;
         
-        if (ownerId is null || !string.Equals(ownerIdFromMetadata, ownerId)) 
+        if (ownerId is null || !string.Equals(response.Metadata[ownerIdKeyFromMetadata], ownerId)) 
             throw new BusinessException("Unauthorized: You are not the owner of this file.");
     }
 }
