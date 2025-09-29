@@ -57,50 +57,73 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
             throw new ArgumentException("UploadId cannot be null or empty.");
 
         var json = JsonSerializer.Serialize(recordToBeUpdated, JsonOptions);
-        await _db.StringSetAsync(GenerateKey(recordToBeUpdated.UploadId), json,
-            expiry: recordToBeUpdated.ExpirationDateTimeUtc?.Subtract(DateTime.UtcNow));
+
+        using (var updateRedLock = await CreateUpdateLockAsync(recordToBeUpdated.UploadId))
+        {
+            if (!updateRedLock.IsAcquired)
+                throw new Exception(
+                    "Could not acquire the distributed lock for AddAdditionalMetadataByUploadId operation.");
+
+            await _db.StringSetAsync(GenerateKey(recordToBeUpdated.UploadId), json,
+                expiry: recordToBeUpdated.ExpirationDateTimeUtc?.Subtract(DateTime.UtcNow));
+        }
     }
 
     public async Task AddPartNumbersWithTagsEntryByUploadId(string uploadId, KeyValuePair<int, string> entry)
     {
-        using (var redLock = await CreateLockAsync($"upload:{GenerateKey(uploadId)}:lock"))
+        using (var updateRedLock = await CreateUpdateLockAsync(uploadId))
         {
-            if (!redLock.IsAcquired)
-                throw new Exception(
-                    "Could not acquire the distributed lock for AddPartNumbersWithTagsEntryByUploadId operation.");
-
-            var record = await GetByUploadId(uploadId);
-            record!.PartNumbersWithTags.Add(entry.Key, entry.Value);
-            record.ExpirationDateTimeUtc = DateTime.UtcNow.AddHours(1);
-            await Update(record);
-        }
-    }
-
-    public async Task AddAdditionalMetadataByUploadId(string uploadId, Dictionary<string, dynamic> metadata, string? ownerId = null)
-    {
-        using (var redLock = await CreateLockAsync(
-                   $"update_metadata:{GenerateKey(uploadId)}:lock",
-                   expiry: TimeSpan.FromSeconds(10),
-                   wait: TimeSpan.FromSeconds(5),
-                   retry: TimeSpan.FromMilliseconds(50)
-               ))
-        {
-            if (!redLock.IsAcquired)
+            if (!updateRedLock.IsAcquired)
                 throw new Exception(
                     "Could not acquire the distributed lock for AddAdditionalMetadataByUploadId operation.");
 
-            var record = await GetByUploadId(uploadId);
-            if (record is null)
-                throw new Exception($"Record with uploadId {uploadId} not found.");
-            if (!record.IsOwnedBy(ownerId))
-                throw new BusinessException("You are not the owner of this record.");
-
-            foreach (var kvp in metadata)
+            using (var redLock = await CreateCustomLockAsync($"upload:{GenerateKey(uploadId)}:lock"))
             {
-                record.Metadata[kvp.Key] = kvp.Value;
-            }
+                if (!redLock.IsAcquired)
+                    throw new Exception(
+                        "Could not acquire the distributed lock for AddPartNumbersWithTagsEntryByUploadId operation.");
 
-            await Update(record);
+                var record = await GetByUploadId(uploadId);
+                record!.PartNumbersWithTags.Add(entry.Key, entry.Value);
+                record.ExpirationDateTimeUtc = DateTime.UtcNow.AddHours(1);
+                await Update(record);
+            }
+        }
+    }
+
+    public async Task AddAdditionalMetadataByUploadId(string uploadId, Dictionary<string, dynamic> metadata,
+        string? ownerId = null)
+    {
+        using (var updateRedLock = await CreateUpdateLockAsync(uploadId))
+        {
+            if (!updateRedLock.IsAcquired)
+                throw new Exception(
+                    "Could not acquire the distributed lock for AddAdditionalMetadataByUploadId operation.");
+
+            using (var redLock = await CreateCustomLockAsync(
+                       $"update_metadata:{GenerateKey(uploadId)}:lock",
+                       expiry: TimeSpan.FromSeconds(10),
+                       wait: TimeSpan.FromSeconds(5),
+                       retry: TimeSpan.FromMilliseconds(50)
+                   ))
+            {
+                if (!redLock.IsAcquired)
+                    throw new Exception(
+                        "Could not acquire the distributed lock for AddAdditionalMetadataByUploadId operation.");
+
+                var record = await GetByUploadId(uploadId);
+                if (record is null)
+                    throw new Exception($"Record with uploadId {uploadId} not found.");
+                if (!record.IsOwnedBy(ownerId))
+                    throw new BusinessException("You are not the owner of this record.");
+
+                foreach (var kvp in metadata)
+                {
+                    record.Metadata[kvp.Key] = kvp.Value;
+                }
+
+                await Update(record);
+            }
         }
     }
 
@@ -162,7 +185,7 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
     /// <param name="wait">Total time to wait. Defaults to 30s.</param>
     /// <param name="retry">Time to retry again. Defaults to 100ms.</param>
     /// <returns></returns>
-    private Task<IRedLock> CreateLockAsync(string resource, TimeSpan? expiry = null, TimeSpan? wait = null,
+    private Task<IRedLock> CreateCustomLockAsync(string resource, TimeSpan? expiry = null, TimeSpan? wait = null,
         TimeSpan? retry = null)
     {
         expiry ??= TimeSpan.FromSeconds(30);
@@ -170,5 +193,10 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
         retry ??= TimeSpan.FromMilliseconds(100);
 
         return _redlockFactory.CreateLockAsync(resource, (TimeSpan)expiry, (TimeSpan)wait, (TimeSpan)retry);
+    }
+    
+    private Task<IRedLock> CreateUpdateLockAsync(string uploadId)
+    {
+        return CreateCustomLockAsync($"update:{GenerateKey(uploadId)}:lock");
     }
 }
