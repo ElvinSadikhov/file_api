@@ -125,8 +125,8 @@ public class UploadController : BaseController
 
             ms.Position = 0; // reset before handing off
 
-            await _fileUploadService.UploadPart(uploadId, partNumber, ms, ownerId);
-            return Ok();
+            var leftParts = await _fileUploadService.UploadPart(uploadId, partNumber, ms, ownerId);
+            return Ok(leftParts);
         }
     }
 
