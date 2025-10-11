@@ -489,9 +489,9 @@ $RECYCLE.BIN/
 
 # launchSettings.json
 **/launchSettings.json
-
-# .NET build output
-bin/
-obj/
-**/bin/
-**/obj/
+#
+## .NET build output
+#bin/
+#obj/
+#**/bin/
+#**/obj/
