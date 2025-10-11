@@ -51,14 +51,14 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
         return record;
     }
 
-    public async Task Update(Record recordToBeUpdated)
+    public async Task Update(Record recordToBeUpdated, IRedLock? externalLock = null)
     {
         if (string.IsNullOrWhiteSpace(recordToBeUpdated.UploadId))
             throw new ArgumentException("UploadId cannot be null or empty.");
 
         var json = JsonSerializer.Serialize(recordToBeUpdated, JsonOptions);
 
-        using (var updateRedLock = await CreateUpdateLockAsync(recordToBeUpdated.UploadId))
+        using (var updateRedLock = externalLock ?? await CreateUpdateLockAsync(recordToBeUpdated.UploadId))
         {
             if (!updateRedLock.IsAcquired)
                 throw new Exception(
@@ -86,7 +86,7 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
                 var record = await GetByUploadId(uploadId);
                 record!.PartNumbersWithTags.Add(entry.Key, entry.Value);
                 record.ExpirationDateTimeUtc = DateTime.UtcNow.AddHours(1);
-                await Update(record);
+                await Update(record, redLock);
             }
         }
     }
@@ -122,7 +122,7 @@ public class RedisRecordAdapter(IConnectionMultiplexer redisClient) : IRecordPor
                     record.Metadata[kvp.Key] = kvp.Value;
                 }
 
-                await Update(record);
+                await Update(record, updateRedLock);
             }
         }
     }

@@ -1,5 +1,6 @@
 using AttributeInjection.Attributes.ForAbstracts;
 using Domain;
+using RedLockNet;
 
 namespace Application.Ports;
 
@@ -16,7 +17,7 @@ public interface IRecordPort
         string? ownerId = null
     );
 
-    Task Update(Record recordToBeUpdated);
+    Task Update(Record recordToBeUpdated, IRedLock? externalLock = null);
     
     Task AddPartNumbersWithTagsEntryByUploadId(string uploadId, KeyValuePair<int, string> entry);
     
