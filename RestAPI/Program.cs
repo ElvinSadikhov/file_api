@@ -22,11 +22,11 @@ builder.Services.AddControllers();
 builder.Services.AddGlobalExceptionJsonResponseCreator();
 builder.Services.AddQuartz(q =>
 {
-    var jobKey = new JobKey("ClearUnfinishedUploadRecordsJob");
-    q.AddJob<ClearUnfinishedUploadRecordsJob>(opts => opts.WithIdentity(jobKey));
+    var jobKey = new JobKey("ClearExpiredUploadRecordsJob");
+    q.AddJob<ClearExpiredUploadRecordsJob>(opts => opts.WithIdentity(jobKey));
     q.AddTrigger(opts => opts
         .ForJob(jobKey)
-        .WithIdentity("ClearUnfinishedUploadRecordsJob-trigger")
+        .WithIdentity("ClearExpiredUploadRecordsJob-trigger")
         .WithSimpleSchedule(x => x.WithIntervalInMinutes(60).RepeatForever()));
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);

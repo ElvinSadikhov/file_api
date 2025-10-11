@@ -60,7 +60,8 @@ public interface IFilePort
         DateTime expiresOn,
         string? ownerId = null
     );
-
+    
+    /// <returns>Deleted object keys.</returns>
     Task<List<string>> DeleteMultiple(
         List<string> objectKeys,
         string? ownerId = null
