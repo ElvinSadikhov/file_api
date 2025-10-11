@@ -3,8 +3,8 @@ using Quartz;
 
 namespace Application.Jobs;
 
-public class ClearUnfinishedUploadRecordsJob(
-    ILogger<ClearUnfinishedUploadRecordsJob> logger,
+public class ClearExpiredUploadRecordsJob(
+    ILogger<ClearExpiredUploadRecordsJob> logger,
     IRecordPort recordPort,
     IFilePort filePort
 ) : IJob
@@ -23,17 +23,21 @@ public class ClearUnfinishedUploadRecordsJob(
             logger.LogInformation("Record with UploadId {UploadId} has expired. Trying to abort and delete.",
                 record.UploadId);
 
-            try
+            //! if the upload is already completed, no need to abort it.
+            if (!record.GetIsCompleted())
             {
-                await filePort.AbortUpload(record.RemoteUploadId, record.ObjectKey);
-                logger.LogInformation("Aborted upload for Record with UploadId {UploadId}.", record.UploadId);
-            }
-            catch (Exception e)
-            {
-                logger.LogError(e,
-                    "Failed to abort upload for Record with UploadId {UploadId}. Skipping to next record.",
-                    record.UploadId);
-                continue;
+                try
+                {
+                    await filePort.AbortUpload(record.RemoteUploadId, record.ObjectKey);
+                    logger.LogInformation("Aborted upload for Record with UploadId {UploadId}.", record.UploadId);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e,
+                        "Failed to abort upload for Record with UploadId {UploadId}. Skipping to next record.",
+                        record.UploadId);
+                    continue;
+                }
             }
 
             try
